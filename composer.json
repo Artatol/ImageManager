@@ -1,0 +1,28 @@
+{
+	"name": "artatol/image-manager",
+	"type": "library",
+	"description": "Integration of Image Manager with AWS S3 storage into Nette Framework",
+	"homepage": "https://www.artatol.cz",
+	"license": ["BSD-3-Clause", "GPL-2.0", "GPL-3.0"],
+	"authors": [
+		{
+			"name": "Martin Charouzek",
+			"homepage": "https://www.artatol.cz",
+			"email": "martin@charouzkovi.cz"
+		}
+	],
+	"support": {
+		"email": "martin@charouzkovi.cz",
+		"issues": "https://github.com/Artatol/ImageManager/issues"
+	},
+	"require": {
+		"nette/nette": "~2.2.0",
+		"aws/aws-sdk-php": "2.6.*"
+	},
+	"autoload": {
+		"psr-0": {
+			"Artatol\\ImageManager\\": "src/"
+		}
+	}
+	]
+}
