@@ -22,6 +22,9 @@
 	"autoload": {
 		"psr-0": {
 			"Artatol\\ImageManager\\": "src/"
-		}
+		},
+		"classmap": [
+			"src/Artatol/ImageManager/exceptions.php"
+		]
 	}
 }

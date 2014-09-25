@@ -11,6 +11,10 @@ interface Exception {
 	
 }
 
-class NotFoundException extends \Exception {
+class NotValidImageException extends \RuntimeException implements Exception {
+	
+}
+
+class NotFoundException extends \RuntimeException implements Exception {
 	
 }

@@ -11,6 +11,7 @@ use Nette;
 use Nette\DI\Config;
 use Nette\PhpGenerator as Code;
 use Aws;
+use Guzzle;
 
 if (!class_exists('Nette\DI\CompilerExtension')) {
 	class_alias('Nette\Config\CompilerExtension', 'Nette\DI\CompilerExtension');
@@ -55,14 +56,13 @@ class ImageManagerExtension extends Nette\DI\CompilerExtension {
 
 		$builder->addDefinition($this->prefix("aws.credentials"))
 				->setClass("Aws\Common\Credentials\Credentials", [$credentials["key"], $credentials["secret"]])
-				->setAutowired(FALSE);
-		
+				->setAutowired(FALSE);		
 		$builder->addDefinition($this->prefix('aws.client'))
-				->setClass('Aws\S3\S3Client')
-				->setFactory($this->prefix("@aws.client::factory"))
+				->setClass("Aws\S3\S3Client")
+				->setFactory("Aws\S3\S3Client::factory")
+				->addSetup("setCredentials", [$this->prefix("@aws.credentials")])
 				->setAutowired(FALSE);
-
-		$manager = $builder->addDefinition($this->prefix('manager'))
+		$builder->addDefinition($this->prefix('manager'))
 				->setClass('Artatol\ImageManager\Manager',[$this->prefix("@aws.client"), $config]);
 				
 	}

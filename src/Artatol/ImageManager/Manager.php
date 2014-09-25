@@ -8,6 +8,7 @@
 namespace Artatol\ImageManager;
 
 use Nette;
+use Nette\Utils;
 use Aws;
 
 /**
@@ -41,13 +42,62 @@ class Manager extends Nette\Object {
 	public function get($key) {
 		$temp = $this->s3Client->getObject(array(
 			"Bucket" => $this->bucket,
-			"Key" => $this->directory."/".$key
+			"Key" => $this->directory . "/" . $key
 		));
-		dump($temp);
+		$img = \Nette\Utils\Image::fromString((string) $temp["Body"]);
+		$this->resize($img, 200, 100)->send();
 	}
 
-	public function test() {
+	public function upload($file) {
+		try {
+			$img = Utils\Image::fromFile($file);
+		} catch (\Exception $e) {
+			throw new \Artatol\ImageManager\NotValidImageException("Image file is not valid.");
+		}
+			$exif = \exif_read_data($file);
+			if ($exif && !empty($exif['Orientation'])) {
+				switch ($exif['Orientation']) {
+					case 8:
+						$img->rotate(90, 0);
+						break;
+					case 3:
+						$img->rotate(180, 0);
+						break;
+					case 6:
+						$img->rotate(-90, 0);
+						break;
+				}
+			}
+			if ($img instanceof Utils\Image) {
+				if ($img->getWidth() > $this->maxWidth) {
+					$img->resize($this->maxWidth, null);
+				}
+				if ($img->getHeight() > $this->maxHeight) {
+					$img->resize(null, $this->maxHeight);
+				}
+				$img->send();
+			} else {
+				throw NotValidImageException("Not valid file");
+			}
+		
+	}
+
+	public function doesBucketExist() {
 		return $this->s3Client->doesBucketExist($this->bucket);
+	}
+
+	private function resize(\Nette\Utils\Image $img, $width, $height) {
+		if ($width != 0 && $height != 0) {
+			$img->resize($width, $height, \Nette\Image::FILL);
+			$img->crop('50%', '50%', $width, $height);
+		}
+		if ($width == 0 && $height != 0) {
+			$img->resize(null, $height, \Nette\Image::SHRINK_ONLY);
+		}
+		if ($width != 0 && $height == 0) {
+			$img->resize($width, null, \Nette\Image::SHRINK_ONLY);
+		}
+		return $img;
 	}
 
 }
