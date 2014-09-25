@@ -10,6 +10,7 @@ namespace Artatol\ImageManager\DI;
 use Nette;
 use Nette\DI\Config;
 use Nette\PhpGenerator as Code;
+use Aws;
 
 if (!class_exists('Nette\DI\CompilerExtension')) {
 	class_alias('Nette\Config\CompilerExtension', 'Nette\DI\CompilerExtension');
@@ -31,15 +32,39 @@ class ImageManagerExtension extends Nette\DI\CompilerExtension {
 	 * @var array
 	 */
 	public $defaults = array(
-		'photo' => ["maxWidth" => 1920, "maxHeight"=> 1080],
 		'awsBucket' => null,
-		'awsKey' => null,
-		'awsSecret' => null
+		'awsDirectory' => '/',
+		'photoMaxWidth' => 1920,
+		'photoMaxHeight' => 1080
+	);
+
+	/**
+	 * @var array
+	 */
+	public $credentials = array(
+		'key' => null,
+		'secret' => null,
 	);
 
 	public function loadConfiguration() {
 		$builder = $this->getContainerBuilder();
 		$config = $this->getConfig($this->defaults);
+		unset($config["credentials"]);
+
+		$credentials = (isset($this->getConfig()["credentials"]) ? $this->getConfig()["credentials"] : $this->credentials);
+
+		$builder->addDefinition($this->prefix("aws.credentials"))
+				->setClass("Aws\Common\Credentials\Credentials", [$credentials["key"], $credentials["secret"]])
+				->setAutowired(FALSE);
+		
+		$builder->addDefinition($this->prefix('aws.client'))
+				->setClass('Aws\S3\S3Client')
+				->setFactory($this->prefix("@aws.client::factory"))
+				->setAutowired(FALSE);
+
+		$manager = $builder->addDefinition($this->prefix('manager'))
+				->setClass('Artatol\ImageManager\Manager',[$this->prefix("@aws.client"), $config]);
+				
 	}
 
 	public static function register(Nette\Configurator $configurator) {
