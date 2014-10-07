@@ -9,7 +9,9 @@ namespace Artatol\ImageManager;
 
 use Nette;
 use Nette\Utils;
-use Aws;
+use Nette\Utils\Image;
+use Aws\S3\S3Client;
+
 
 /**
  * @author Martin Charouzek <martin@charouzkovi.cz>
@@ -31,7 +33,7 @@ class Manager extends Nette\Object {
 	/** @var type string */
 	private $directory;
 
-	public function __construct(Aws\S3\S3Client $client, array $args) {
+	public function __construct(S3Client $client, array $args) {
 		$this->s3Client = $client;
 		$this->bucket = $args["awsBucket"];
 		$this->maxWidth = $args["photoMaxWidth"];
@@ -39,6 +41,10 @@ class Manager extends Nette\Object {
 		$this->directory = $args["awsDirectory"];
 	}
 
+    /**
+     * @param string $key
+     * @return Image | null
+     */
 	public function get($key) {
 		$temp = $this->s3Client->getObject(array(
 			"Bucket" => $this->bucket,
@@ -82,10 +88,19 @@ class Manager extends Nette\Object {
 		
 	}
 
+    /**
+     * @return bool
+     */
 	public function doesBucketExist() {
 		return $this->s3Client->doesBucketExist($this->bucket);
 	}
 
+    /**
+     * @param Image $img
+     * @param $width
+     * @param $height
+     * @return Image
+     */
 	private function resize(\Nette\Utils\Image $img, $width, $height) {
 		if ($width != 0 && $height != 0) {
 			$img->resize($width, $height, \Nette\Image::FILL);
