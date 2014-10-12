@@ -17,7 +17,7 @@ trait TManager
 	/**
 	 * @param Manager $manager
 	 */
-	public function injectImageManager(Manager $manager)
+	public function injectManager(Manager $manager)
 	{
 		$this->manager = $manager;
 	}

@@ -55,7 +55,7 @@ class Manager extends Nette\Object {
 			$this->resize($img, $width, $height);			
 		}
 		switch ($temp["ContentType"]) {
-			case "image/png":
+			case "image/png":				
 				return $img->toString(Image::PNG, 100);
 				break;
 			case "image/gif":
