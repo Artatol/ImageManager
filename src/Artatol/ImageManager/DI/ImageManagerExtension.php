@@ -8,6 +8,7 @@
 namespace Artatol\ImageManager\DI;
 
 use Nette;
+use Artatol;
 use Nette\DI\Config;
 use Nette\PhpGenerator as Code;
 use Aws;

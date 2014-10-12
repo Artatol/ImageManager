@@ -45,13 +45,26 @@ class Manager extends Nette\Object {
      * @param string $key
      * @return Image | null
      */
-	public function get($key) {
+	public function get($key, $width = 0, $height = 0) {
 		$temp = $this->s3Client->getObject(array(
 			"Bucket" => $this->bucket,
 			"Key" => $this->directory . "/" . $key
 		));
 		$img = \Nette\Utils\Image::fromString((string) $temp["Body"]);
-		$this->resize($img, 200, 100)->send();
+		if ($width != 0 OR $height != 0) {			
+			$this->resize($img, $width, $height);			
+		}
+		switch ($temp["ContentType"]) {
+			case "image/png":
+				return $img->toString(Image::PNG, 100);
+				break;
+			case "image/gif":
+				return $img->toString(Image::GIF, 100);
+				break;
+			default:
+				return $img->toString(Image::JPEG, 100);
+				break;
+		}
 	}
 
 	public function upload($file) {
