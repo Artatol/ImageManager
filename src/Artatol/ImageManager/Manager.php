@@ -12,7 +12,6 @@ use Nette\Utils;
 use Nette\Utils\Image;
 use Aws\S3\S3Client;
 
-
 /**
  * @author Martin Charouzek <martin@charouzkovi.cz>
  */
@@ -33,37 +32,72 @@ class Manager extends Nette\Object {
 	/** @var type string */
 	private $directory;
 
+	/** @var type string */
+	private $photoCache;
+
+	/** @var type string */
+	private $wwwDir;
+
 	public function __construct(S3Client $client, array $args) {
 		$this->s3Client = $client;
 		$this->bucket = $args["awsBucket"];
 		$this->maxWidth = $args["photoMaxWidth"];
 		$this->maxHeight = $args["photoMaxHeight"];
 		$this->directory = $args["awsDirectory"];
+		$this->photoCache = $args["photoCache"];
+		$this->wwwDir = $args["wwwDir"];
 	}
 
-    /**
-     * @param string $key
-     * @return Image | null
-     */
-	public function get($key, $width = 0, $height = 0) {
-		$temp = $this->s3Client->getObject(array(
-			"Bucket" => $this->bucket,
-			"Key" => $this->directory . "/" . $key
-		));
-		$img = \Nette\Utils\Image::fromString((string) $temp["Body"]);
-		if ($width != 0 OR $height != 0) {			
-			$this->resize($img, $width, $height);			
+	private function get($key, $width = 0, $height = 0) {
+		$path = "/" . $this->photoCache . "/" . $width . "-" . $height . "-" . $key;
+		if (!is_file($this->wwwDir . "/" . $path)) {
+			try {
+				$temp = $this->s3Client->getObject(array(
+					"Bucket" => $this->bucket,
+					"Key" => $this->directory . "/" . $key
+				));
+			} catch (\Aws\S3\Exception\NoSuchKeyException $e) {
+				throw new NotFoundException("Image key " . $key . " was not found in bucket " . $this->bucket);
+			}
+			$image = Image::fromString($temp["Body"]);
+			if ($image) {
+				if ($width != 0 OR $height != 0) {
+					$this->resize($image, $width, $height);
+				}
+				switch ($temp["ContentType"]) {
+					case "image/png":
+						$image->save($this->wwwDir . "/" . $path, 100, Image::PNG);
+						break;
+					case "image/gif":
+						$image->save($this->wwwDir . "/" . $path, 100, Image::GIF);
+						break;
+					default:
+						$image->save($this->wwwDir . "/" . $path, 100, Image::JPEG);
+						break;
+				}
+			} else {
+				throw new NotValidImageException("Not valid image.");
+			}
 		}
-		switch ($temp["ContentType"]) {
-			case "image/png":				
-				return $img->toString(Image::PNG, 100);
-				break;
-			case "image/gif":
-				return $img->toString(Image::GIF, 100);
-				break;
-			default:
-				return $img->toString(Image::JPEG, 100);
-				break;
+		return $path;
+	}
+
+	public function getImgObject($key, $width = 0, $height = 0, $title = null, $classes = null) {
+		try {
+			$path = $this->get($key, $width, $height);
+			$img = Utils\Html::el("img");
+			$img->src = $path;
+			if ($title) {
+				$img->title = $title;
+				$img->alt = $title;
+			}
+			if ($classes) {
+				$img->class = $classes;
+			}
+			return $img;
+		} catch (\Artatol\ImageManager\NotFoundException $e) {
+			//log or whatever
+			return null;
 		}
 	}
 
@@ -73,47 +107,46 @@ class Manager extends Nette\Object {
 		} catch (\Exception $e) {
 			throw new \Artatol\ImageManager\NotValidImageException("Image file is not valid.");
 		}
-			$exif = \exif_read_data($file);
-			if ($exif && !empty($exif['Orientation'])) {
-				switch ($exif['Orientation']) {
-					case 8:
-						$img->rotate(90, 0);
-						break;
-					case 3:
-						$img->rotate(180, 0);
-						break;
-					case 6:
-						$img->rotate(-90, 0);
-						break;
-				}
+		$exif = \exif_read_data($file);
+		if ($exif && !empty($exif['Orientation'])) {
+			switch ($exif['Orientation']) {
+				case 8:
+					$img->rotate(90, 0);
+					break;
+				case 3:
+					$img->rotate(180, 0);
+					break;
+				case 6:
+					$img->rotate(-90, 0);
+					break;
 			}
-			if ($img instanceof Utils\Image) {
-				if ($img->getWidth() > $this->maxWidth) {
-					$img->resize($this->maxWidth, null);
-				}
-				if ($img->getHeight() > $this->maxHeight) {
-					$img->resize(null, $this->maxHeight);
-				}
-				$img->send();
-			} else {
-				throw NotValidImageException("Not valid file");
+		}
+		if ($img instanceof Utils\Image) {
+			if ($img->getWidth() > $this->maxWidth) {
+				$img->resize($this->maxWidth, null);
 			}
-		
+			if ($img->getHeight() > $this->maxHeight) {
+				$img->resize(null, $this->maxHeight);
+			}
+			$img->send();
+		} else {
+			throw NotValidImageException("Not valid file");
+		}
 	}
 
-    /**
-     * @return bool
-     */
+	/**
+	 * @return bool
+	 */
 	public function doesBucketExist() {
 		return $this->s3Client->doesBucketExist($this->bucket);
 	}
 
-    /**
-     * @param Image $img
-     * @param $width
-     * @param $height
-     * @return Image
-     */
+	/**
+	 * @param Image $img
+	 * @param $width
+	 * @param $height
+	 * @return Image
+	 */
 	private function resize(\Nette\Utils\Image $img, $width, $height) {
 		if ($width != 0 && $height != 0) {
 			$img->resize($width, $height, \Nette\Image::FILL);

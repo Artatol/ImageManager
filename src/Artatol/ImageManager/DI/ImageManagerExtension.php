@@ -37,7 +37,8 @@ class ImageManagerExtension extends Nette\DI\CompilerExtension {
 		'awsBucket' => null,
 		'awsDirectory' => '/',
 		'photoMaxWidth' => 1920,
-		'photoMaxHeight' => 1080
+		'photoMaxHeight' => 1080,
+		'photoCache' => 'photo_cache'
 	);
 
 	/**
@@ -51,6 +52,7 @@ class ImageManagerExtension extends Nette\DI\CompilerExtension {
 	public function loadConfiguration() {
 		$builder = $this->getContainerBuilder();
 		$config = $this->getConfig($this->defaults);
+		$config["wwwDir"] = $builder->parameters["wwwDir"];
 		unset($config["credentials"]);
 
 		$credentials = (isset($this->getConfig()["credentials"]) ? $this->getConfig()["credentials"] : $this->credentials);

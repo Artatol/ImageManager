@@ -10,18 +10,8 @@ use Nette;
 trait TManager
 {
 
-	/** @var manager */
+	/** @var \Artatol\ImageManager\Manager @inject */
 	public $manager;
-
-
-	/**
-	 * @param Manager $manager
-	 */
-	public function injectManager(Manager $manager)
-	{
-		$this->manager = $manager;
-	}
-
 
 	/**
 	 * @param string $class
@@ -30,7 +20,7 @@ trait TManager
 	protected function createTemplate($class = NULL)
 	{
 		$template = parent::createTemplate($class);
-		$template->_manager = $this->manager;
+		$template->_img = $this->manager;
 		return $template;
 	}
 
