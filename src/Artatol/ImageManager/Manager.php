@@ -7,6 +7,7 @@
 
 namespace Artatol\ImageManager;
 
+use Aws\CloudTrail\Exception\S3BucketDoesNotExistException;
 use Nette;
 use Nette\Utils;
 use Nette\Utils\Image;
@@ -50,6 +51,18 @@ class Manager extends Nette\Object
     }
 
     /**
+     * @param $bucket
+     */
+    public function setBucket($bucket)
+    {
+        if ($this->doesBucketExist($bucket) === true) {
+            $this->bucket = $bucket;
+        } else {
+            throw new S3BucketDoesNotExistException("Bucket ".$bucket." doesn't exists!");
+        }
+    }
+
+    /**
      * @param $key
      * @param int $width
      * @param int $height
@@ -84,6 +97,12 @@ class Manager extends Nette\Object
         } else {
             throw new NotValidImageException("Not valid image.");
         }
+    }
+
+    public function getBlankImage($width, $height) {
+        $img = Image::fromBlank($this->maxWidth, $this->maxHeight, Image::rgb(255,255,255));
+        $this->resize($img, $width, $height);
+        return $img->toString();
     }
 
     /**
@@ -124,7 +143,7 @@ class Manager extends Nette\Object
             $type = (getimagesizefromstring($img)) ? getimagesizefromstring($img)["mime"] : "image/jpeg";
             if ($id_picture === null OR $id_picture == '') {
                 $date = new Utils\DateTime();
-                $id_picture = (int)$date->format("YmdHis") . Utils\Strings::random(5, '0-9');
+                $id_picture = (int)$date->format("YmdHis") . Utils\Random::generate(5, '0-9');
             }
 
             switch ($type) {
@@ -142,15 +161,19 @@ class Manager extends Nette\Object
             $key = $id_picture . $extension;
 
             $tmpFile = $this->tempDir . "/" . $key;
-            file_put_contents($file, $img->toString());
-            $this->s3Client->putObject(array(
-                'Bucket' => $this->bucket,
-                'Key' => $this->directory . '/' . $key,
-                'SourceFile' => $file,
-                'ACL' => $this->ACL
-            ));
-            unlink($tmpFile);
-            return $key;
+            try {
+                file_put_contents($file, $img->toString());
+                $this->s3Client->putObject(array(
+                    'Bucket' => $this->bucket,
+                    'Key' => $this->directory . '/' . $key,
+                    'SourceFile' => $file,
+                    'ACL' => $this->ACL
+                ));
+                unlink($tmpFile);
+                return $key;
+            } catch (\Exception $e) {
+                throw new ImageUploadException($e->getMessage());
+            }
         } else {
             throw NotValidImageException("Not valid file");
         }
@@ -159,9 +182,9 @@ class Manager extends Nette\Object
     /**
      * @return bool
      */
-    public function doesBucketExist()
+    public function doesBucketExist($bucket)
     {
-        return $this->s3Client->doesBucketExist($this->bucket);
+        return $this->s3Client->doesBucketExist($bucket);
     }
 
     /**

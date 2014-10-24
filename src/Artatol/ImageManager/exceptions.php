@@ -15,6 +15,10 @@ class NotValidImageException extends \RuntimeException implements Exception {
 	
 }
 
+class ImageUploadException extends \RuntimeException implements Exception {
+
+}
+
 class NotFoundException extends \RuntimeException implements Exception {
 	
 }
