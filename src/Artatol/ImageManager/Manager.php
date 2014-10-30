@@ -153,12 +153,15 @@ class Manager extends Nette\Object
             switch ($type) {
                 case "image/png":
                     $extension = ".png";
+                    $type = Image::PNG;
                     break;
                 case "image/gif":
                     $extension = ".gif";
+                    $type = Image::GIF;
                     break;
                 default:
                     $extension = ".jpg";
+                    $type = Image::JPEG;
                     break;
             }
 
@@ -166,7 +169,7 @@ class Manager extends Nette\Object
 
             $tmpFile = $this->tempDir . "/" . $key;
             try {
-                file_put_contents($tmpFile, $img->toString());
+                $img->save($tmpFile,100,$type);
                 $this->s3Client->putObject(array(
                     'Bucket' => $this->bucket,
                     'Key' => $this->directory . '/' . $key,
