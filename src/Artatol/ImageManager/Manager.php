@@ -48,6 +48,7 @@ class Manager extends Nette\Object
         $this->maxHeight = $args["photoMaxHeight"];
         $this->directory = $args["awsDirectory"];
         $this->tempDir = $args["tempDir"];
+        $this->ACL = $args["ACL"];
     }
 
     /**
@@ -58,7 +59,7 @@ class Manager extends Nette\Object
         if ($this->doesBucketExist($bucket) === true) {
             $this->bucket = $bucket;
         } else {
-            throw new S3BucketDoesNotExistException("Bucket ".$bucket." doesn't exists!");
+            throw new S3BucketDoesNotExistException("Bucket " . $bucket . " doesn't exists!");
         }
     }
 
@@ -99,8 +100,9 @@ class Manager extends Nette\Object
         }
     }
 
-    public function getBlankImage($width, $height) {
-        $img = Image::fromBlank($this->maxWidth, $this->maxHeight, Image::rgb(255,255,255));
+    public function getBlankImage($width, $height)
+    {
+        $img = Image::fromBlank($this->maxWidth, $this->maxHeight, Image::rgb(255, 255, 255));
         $this->resize($img, $width, $height);
         return $img->toString();
     }
@@ -115,21 +117,24 @@ class Manager extends Nette\Object
     {
         try {
             $img = Image::fromFile($file);
+            $type = (getimagesize($file)) ? getimagesize($file)["mime"] : "image/jpeg";
         } catch (\Exception $e) {
             throw new NotValidImageException("Image file is invalid.");
         }
-        $exif = \exif_read_data($file);
-        if ($exif && !empty($exif['Orientation'])) {
-            switch ($exif['Orientation']) {
-                case 8:
-                    $img->rotate(90, 0);
-                    break;
-                case 3:
-                    $img->rotate(180, 0);
-                    break;
-                case 6:
-                    $img->rotate(-90, 0);
-                    break;
+        if ($type == "image/jpeg") {
+            $exif = \exif_read_data($file);
+            if ($exif && !empty($exif['Orientation'])) {
+                switch ($exif['Orientation']) {
+                    case 8:
+                        $img->rotate(90, 0);
+                        break;
+                    case 3:
+                        $img->rotate(180, 0);
+                        break;
+                    case 6:
+                        $img->rotate(-90, 0);
+                        break;
+                }
             }
         }
 
@@ -140,7 +145,6 @@ class Manager extends Nette\Object
             if ($img->getHeight() > $this->maxHeight) {
                 $img->resize(null, $this->maxHeight);
             }
-            $type = (getimagesizefromstring($img)) ? getimagesizefromstring($img)["mime"] : "image/jpeg";
             if ($id_picture === null OR $id_picture == '') {
                 $date = new Utils\DateTime();
                 $id_picture = (int)$date->format("YmdHis") . Utils\Random::generate(5, '0-9');
@@ -162,11 +166,11 @@ class Manager extends Nette\Object
 
             $tmpFile = $this->tempDir . "/" . $key;
             try {
-                file_put_contents($file, $img->toString());
+                file_put_contents($tmpFile, $img->toString());
                 $this->s3Client->putObject(array(
                     'Bucket' => $this->bucket,
                     'Key' => $this->directory . '/' . $key,
-                    'SourceFile' => $file,
+                    'SourceFile' => $tmpFile,
                     'ACL' => $this->ACL
                 ));
                 unlink($tmpFile);
